@@ -9,11 +9,11 @@
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f6fb;color:#172033}
     .game{width:min(96vw,560px);background:#fff;padding:24px;border-radius:22px;box-shadow:0 16px 45px #17203318;text-align:center}
     h1{margin:0 0 6px;font-size:clamp(1.7rem,5vw,2.2rem)}
-    .sub{margin:0 0 16px;color:#747c90;font-size:.95rem}
-    .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 auto 15px;max-width:360px;background:#f0f3f8;padding:5px;border-radius:14px}
-    .mode{border:0;background:transparent;padding:10px 12px;border-radius:10px;font-weight:700;color:#667085;cursor:pointer}
-    .mode.active{background:#fff;color:#172033;box-shadow:0 3px 10px #17203318}
-    .status{font-weight:800;margin:10px 0 14px;min-height:24px}
+    .sub{margin:0 0 14px;color:#747c90;font-size:.95rem}
+    .picker{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px auto;max-width:390px;background:#f0f3f8;padding:5px;border-radius:14px}
+    .pick{border:0;background:transparent;padding:10px 8px;border-radius:10px;font-weight:750;color:#667085;cursor:pointer}
+    .pick.active{background:#fff;color:#172033;box-shadow:0 3px 10px #17203318}
+    .status{font-weight:800;margin:13px 0 14px;min-height:24px}
     .board-wrap{width:100%;overflow:auto;display:flex;justify-content:center;padding:2px}
     .board{display:grid;aspect-ratio:1;background:#d6dbe6;border:2px solid #d6dbe6;border-radius:14px;overflow:hidden;touch-action:manipulation}
     .board.mode-3{grid-template-columns:repeat(3,1fr);width:min(100%,390px);gap:2px}
@@ -26,57 +26,66 @@
     .actions{display:flex;justify-content:center;margin-top:17px}
     #reset{border:0;border-radius:999px;padding:11px 24px;font-size:1rem;font-weight:800;background:#172033;color:#fff;cursor:pointer}
     footer{margin-top:15px;font-size:.82rem;color:#8a91a3}
-    @media(max-width:430px){body{padding:10px}.game{padding:18px 12px;border-radius:18px}.board.mode-5{width:100%}.mode-5 .cell{font-size:clamp(.95rem,5.7vw,1.45rem)}}
+    @media(max-width:430px){body{padding:10px}.game{padding:18px 12px;border-radius:18px}.board.mode-5{width:100%}.mode-5 .cell{font-size:clamp(.95rem,5.7vw,1.45rem)}.pick{font-size:.85rem;padding:9px 5px}}
   </style>
 </head>
 <body>
   <main class="game">
     <h1>⭕ Cờ Caro ❌</h1>
-    <p class="sub">Hai người chơi trên cùng thiết bị</p>
+    <p class="sub">Chọn kiểu chơi rồi bắt đầu</p>
 
-    <div class="modes" aria-label="Chọn chế độ chơi">
-      <button class="mode active" data-mode="3">3 quân liên tiếp</button>
-      <button class="mode" data-mode="5">5 quân liên tiếp</button>
+    <div class="picker" aria-label="Chọn đối thủ">
+      <button class="pick opponent active" data-opponent="human">👥 2 người</button>
+      <button class="pick opponent" data-opponent="computer">🤖 Chơi với máy</button>
+    </div>
+
+    <div class="picker" aria-label="Chọn luật thắng">
+      <button class="pick rule active" data-mode="3">3 quân liên tiếp</button>
+      <button class="pick rule" data-mode="5">5 quân liên tiếp</button>
     </div>
 
     <div id="status" class="status">Lượt của X</div>
     <div class="board-wrap"><div id="board" class="board mode-3" aria-label="Bàn cờ"></div></div>
     <div class="actions"><button id="reset">Chơi lại</button></div>
-    <footer id="rule">Bàn 3×3 · Xếp 3 quân liên tiếp để thắng</footer>
+    <footer id="ruleText">Bàn 3×3 · Xếp 3 quân liên tiếp để thắng</footer>
   </main>
 
 <script>
 const boardEl=document.querySelector('#board');
 const statusEl=document.querySelector('#status');
 const resetEl=document.querySelector('#reset');
-const ruleEl=document.querySelector('#rule');
-const modeButtons=[...document.querySelectorAll('.mode')];
+const ruleTextEl=document.querySelector('#ruleText');
+const ruleButtons=[...document.querySelectorAll('.rule')];
+const opponentButtons=[...document.querySelectorAll('.opponent')];
 
-let winLength=3;
-let size=3;
-let board=[];
-let current='X';
-let playing=true;
-let winningCells=[];
+let winLength=3,size=3,opponent='human';
+let board=[],current='X',playing=true,winningCells=[],thinking=false;
 
 function configureMode(mode){
   winLength=Number(mode);
   size=winLength===3?3:10;
   boardEl.className=`board mode-${winLength}`;
-  modeButtons.forEach(btn=>btn.classList.toggle('active',Number(btn.dataset.mode)===winLength));
-  ruleEl.textContent=winLength===3
-    ?'Bàn 3×3 · Xếp 3 quân liên tiếp để thắng'
-    :'Bàn 10×10 · Xếp 5 quân liên tiếp để thắng';
+  ruleButtons.forEach(btn=>btn.classList.toggle('active',Number(btn.dataset.mode)===winLength));
+  ruleTextEl.textContent=winLength===3?'Bàn 3×3 · Xếp 3 quân liên tiếp để thắng':'Bàn 10×10 · Xếp 5 quân liên tiếp để thắng';
+  start();
+}
+
+function configureOpponent(value){
+  opponent=value;
+  opponentButtons.forEach(btn=>btn.classList.toggle('active',btn.dataset.opponent===opponent));
   start();
 }
 
 function start(){
   board=Array(size*size).fill('');
-  current='X';
-  playing=true;
-  winningCells=[];
-  statusEl.textContent='Lượt của X';
-  render();
+  current='X';playing=true;thinking=false;winningCells=[];
+  setStatus();render();
+}
+
+function setStatus(){
+  if(!playing)return;
+  if(opponent==='computer') statusEl.textContent=current==='X'?'Lượt của bạn (X)':'🤖 Máy đang nghĩ...';
+  else statusEl.textContent=`Lượt của ${current}`;
 }
 
 function render(){
@@ -85,49 +94,140 @@ function render(){
     const cell=document.createElement('button');
     cell.className='cell'+(value==='O'?' o':'')+(winningCells.includes(index)?' win':'');
     cell.textContent=value;
-    cell.disabled=!playing||Boolean(value);
+    cell.disabled=!playing||thinking||Boolean(value)||(opponent==='computer'&&current==='O');
     cell.setAttribute('aria-label',value?`Ô ${index+1}: ${value}`:`Ô ${index+1}`);
-    cell.addEventListener('click',()=>move(index));
+    cell.addEventListener('click',()=>humanMove(index));
     boardEl.appendChild(cell);
   });
 }
 
-function move(index){
-  if(!playing||board[index])return;
-  board[index]=current;
-  winningCells=findWin(index,current);
+function humanMove(index){
+  if(!playing||thinking||board[index]||(opponent==='computer'&&current==='O'))return;
+  placeMove(index,current);
+  if(playing&&opponent==='computer'&&current==='O'){
+    thinking=true;setStatus();render();
+    setTimeout(computerMove,280);
+  }
+}
 
+function placeMove(index,player){
+  board[index]=player;
+  winningCells=findWin(index,player);
   if(winningCells.length){
     playing=false;
-    statusEl.textContent=`🎉 ${current} thắng!`;
+    statusEl.textContent=opponent==='computer'?(player==='X'?'🎉 Bạn thắng!':'🤖 Máy thắng!'):`🎉 ${player} thắng!`;
   }else if(board.every(Boolean)){
-    playing=false;
-    statusEl.textContent='🤝 Hòa!';
+    playing=false;statusEl.textContent='🤝 Hòa!';
   }else{
-    current=current==='X'?'O':'X';
-    statusEl.textContent=`Lượt của ${current}`;
+    current=player==='X'?'O':'X';setStatus();
   }
   render();
 }
 
-function findWin(index,player){
-  const row=Math.floor(index/size);
-  const col=index%size;
-  const directions=[[0,1],[1,0],[1,1],[1,-1]];
+function computerMove(){
+  if(!playing)return;
+  let move=findImmediate('O') ?? findImmediate('X');
+  if(move==null) move=winLength===3?best3x3Move():bestHeuristicMove();
+  thinking=false;
+  if(move!=null) placeMove(move,'O');
+}
 
+function findImmediate(player){
+  for(let i=0;i<board.length;i++){
+    if(board[i])continue;
+    board[i]=player;
+    const wins=findWin(i,player).length>0;
+    board[i]='';
+    if(wins)return i;
+  }
+  return null;
+}
+
+function best3x3Move(){
+  let best=-Infinity,moves=[];
+  for(let i=0;i<board.length;i++)if(!board[i]){
+    board[i]='O';
+    const score=minimax(false);
+    board[i]='';
+    if(score>best){best=score;moves=[i]}else if(score===best)moves.push(i);
+  }
+  return moves[Math.floor(Math.random()*moves.length)];
+}
+
+function minimax(maximizing){
+  const result=evaluate3x3();
+  if(result!==null)return result;
+  if(maximizing){
+    let best=-Infinity;
+    for(let i=0;i<9;i++)if(!board[i]){board[i]='O';best=Math.max(best,minimax(false));board[i]=''}
+    return best;
+  }
+  let best=Infinity;
+  for(let i=0;i<9;i++)if(!board[i]){board[i]='X';best=Math.min(best,minimax(true));board[i]=''}
+  return best;
+}
+
+function evaluate3x3(){
+  const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const line of lines){
+    const [a,b,c]=line;
+    if(board[a]&&board[a]===board[b]&&board[a]===board[c])return board[a]==='O'?10:-10;
+  }
+  return board.every(Boolean)?0:null;
+}
+
+function bestHeuristicMove(){
+  const candidates=[];
+  for(let i=0;i<board.length;i++)if(!board[i]&&hasNeighbor(i))candidates.push(i);
+  if(!candidates.length)return Math.floor(size/2)*size+Math.floor(size/2);
+  let best=-Infinity,bestMoves=[];
+  for(const i of candidates){
+    const score=scoreMove(i,'O')*1.1+scoreMove(i,'X');
+    if(score>best){best=score;bestMoves=[i]}else if(score===best)bestMoves.push(i);
+  }
+  return bestMoves[Math.floor(Math.random()*bestMoves.length)];
+}
+
+function hasNeighbor(index){
+  const r=Math.floor(index/size),c=index%size;
+  for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++){
+    if(!dr&&!dc)continue;
+    const rr=r+dr,cc=c+dc;
+    if(rr>=0&&rr<size&&cc>=0&&cc<size&&board[rr*size+cc])return true;
+  }
+  return false;
+}
+
+function scoreMove(index,player){
+  const r=Math.floor(index/size),c=index%size;
+  const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+  let total=0;
+  for(const [dr,dc] of dirs){
+    let count=1,open=0;
+    for(const sign of [-1,1]){
+      let rr=r+dr*sign,cc=c+dc*sign;
+      while(rr>=0&&rr<size&&cc>=0&&cc<size&&board[rr*size+cc]===player){count++;rr+=dr*sign;cc+=dc*sign}
+      if(rr>=0&&rr<size&&cc>=0&&cc<size&&!board[rr*size+cc])open++;
+    }
+    total+=Math.pow(8,count)+(open*count*6);
+  }
+  const center=(size-1)/2;
+  total-=Math.abs(r-center)+Math.abs(c-center);
+  return total;
+}
+
+function findWin(index,player){
+  const row=Math.floor(index/size),col=index%size;
+  const directions=[[0,1],[1,0],[1,1],[1,-1]];
   for(const [dr,dc] of directions){
     const line=[index];
-
     for(const sign of [-1,1]){
-      let r=row+dr*sign;
-      let c=col+dc*sign;
+      let r=row+dr*sign,c=col+dc*sign;
       while(r>=0&&r<size&&c>=0&&c<size&&board[r*size+c]===player){
         if(sign<0)line.unshift(r*size+c);else line.push(r*size+c);
-        r+=dr*sign;
-        c+=dc*sign;
+        r+=dr*sign;c+=dc*sign;
       }
     }
-
     if(line.length>=winLength){
       const pos=line.indexOf(index);
       let start=Math.max(0,pos-winLength+1);
@@ -138,7 +238,8 @@ function findWin(index,player){
   return [];
 }
 
-modeButtons.forEach(btn=>btn.addEventListener('click',()=>configureMode(btn.dataset.mode)));
+ruleButtons.forEach(btn=>btn.addEventListener('click',()=>configureMode(btn.dataset.mode)));
+opponentButtons.forEach(btn=>btn.addEventListener('click',()=>configureOpponent(btn.dataset.opponent)));
 resetEl.addEventListener('click',start);
 configureMode(3);
 </script>
