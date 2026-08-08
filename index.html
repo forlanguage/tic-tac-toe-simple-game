@@ -3,35 +3,144 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cờ Caro Mini</title>
+  <title>Cờ Caro</title>
   <style>
-    *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,sans-serif;background:#f4f6fb;color:#172033}
-    .game{width:min(92vw,430px);background:white;padding:28px;border-radius:22px;box-shadow:0 16px 45px #17203318;text-align:center}
-    h1{margin:0 0 8px;font-size:2rem}.sub{margin:0 0 18px;color:#687086}.status{font-weight:700;margin:14px 0 18px;min-height:24px}
-    .board{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;aspect-ratio:1}
-    .cell{border:0;border-radius:14px;background:#edf1f8;font-size:clamp(2.6rem,14vw,4.5rem);font-weight:800;cursor:pointer;color:#315efb;transition:.15s}
-    .cell:hover:not(:disabled){transform:translateY(-2px);background:#e4eaf6}.cell:disabled{cursor:default}.cell.o{color:#f04e45}
-    .actions{display:flex;justify-content:center;margin-top:20px}#reset{border:0;border-radius:999px;padding:11px 22px;font-size:1rem;font-weight:700;background:#172033;color:white;cursor:pointer}
-    footer{margin-top:18px;font-size:.82rem;color:#8a91a3}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f6fb;color:#172033}
+    .game{width:min(96vw,560px);background:#fff;padding:24px;border-radius:22px;box-shadow:0 16px 45px #17203318;text-align:center}
+    h1{margin:0 0 6px;font-size:clamp(1.7rem,5vw,2.2rem)}
+    .sub{margin:0 0 16px;color:#747c90;font-size:.95rem}
+    .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 auto 15px;max-width:360px;background:#f0f3f8;padding:5px;border-radius:14px}
+    .mode{border:0;background:transparent;padding:10px 12px;border-radius:10px;font-weight:700;color:#667085;cursor:pointer}
+    .mode.active{background:#fff;color:#172033;box-shadow:0 3px 10px #17203318}
+    .status{font-weight:800;margin:10px 0 14px;min-height:24px}
+    .board-wrap{width:100%;overflow:auto;display:flex;justify-content:center;padding:2px}
+    .board{display:grid;aspect-ratio:1;background:#d6dbe6;border:2px solid #d6dbe6;border-radius:14px;overflow:hidden;touch-action:manipulation}
+    .board.mode-3{grid-template-columns:repeat(3,1fr);width:min(100%,390px);gap:2px}
+    .board.mode-5{grid-template-columns:repeat(10,1fr);width:min(100%,520px);gap:1px;border-radius:10px}
+    .cell{border:0;background:#fff;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;color:#315efb}
+    .mode-3 .cell{font-size:clamp(2.8rem,14vw,5rem)}
+    .mode-5 .cell{font-size:clamp(1.05rem,5vw,1.8rem);min-width:0}
+    .cell.o{color:#ef4b45}.cell:hover:not(:disabled){background:#f6f8fc}.cell:disabled{cursor:default}
+    .cell.win{background:#fff3b8}
+    .actions{display:flex;justify-content:center;margin-top:17px}
+    #reset{border:0;border-radius:999px;padding:11px 24px;font-size:1rem;font-weight:800;background:#172033;color:#fff;cursor:pointer}
+    footer{margin-top:15px;font-size:.82rem;color:#8a91a3}
+    @media(max-width:430px){body{padding:10px}.game{padding:18px 12px;border-radius:18px}.board.mode-5{width:100%}.mode-5 .cell{font-size:clamp(.95rem,5.7vw,1.45rem)}}
   </style>
 </head>
 <body>
   <main class="game">
-    <h1>⭕ Cờ Caro Mini ❌</h1>
-    <p class="sub">Hai người chơi trên cùng thiết bị · 3 × 3</p>
+    <h1>⭕ Cờ Caro ❌</h1>
+    <p class="sub">Hai người chơi trên cùng thiết bị</p>
+
+    <div class="modes" aria-label="Chọn chế độ chơi">
+      <button class="mode active" data-mode="3">3 quân liên tiếp</button>
+      <button class="mode" data-mode="5">5 quân liên tiếp</button>
+    </div>
+
     <div id="status" class="status">Lượt của X</div>
-    <div id="board" class="board" aria-label="Bàn cờ"></div>
+    <div class="board-wrap"><div id="board" class="board mode-3" aria-label="Bàn cờ"></div></div>
     <div class="actions"><button id="reset">Chơi lại</button></div>
-    <footer>X đi trước · Xếp 3 ô liên tiếp để thắng</footer>
+    <footer id="rule">Bàn 3×3 · Xếp 3 quân liên tiếp để thắng</footer>
   </main>
+
 <script>
-const boardEl=document.querySelector('#board'), statusEl=document.querySelector('#status'), resetEl=document.querySelector('#reset');
-const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-let board,current,playing;
-function start(){board=Array(9).fill('');current='X';playing=true;statusEl.textContent='Lượt của X';render()}
-function render(){boardEl.innerHTML='';board.forEach((v,i)=>{const b=document.createElement('button');b.className='cell '+(v==='O'?'o':'');b.textContent=v;b.disabled=!playing||!!v;b.setAttribute('aria-label',v?`Ô ${i+1}: ${v}`:`Ô ${i+1}`);b.onclick=()=>move(i);boardEl.appendChild(b)})}
-function move(i){if(!playing||board[i])return;board[i]=current;const win=wins.some(line=>line.every(n=>board[n]===current));if(win){playing=false;statusEl.textContent=`🎉 ${current} thắng!`}else if(board.every(Boolean)){playing=false;statusEl.textContent='🤝 Hòa!'}else{current=current==='X'?'O':'X';statusEl.textContent=`Lượt của ${current}`}render()}
-resetEl.onclick=start;start();
+const boardEl=document.querySelector('#board');
+const statusEl=document.querySelector('#status');
+const resetEl=document.querySelector('#reset');
+const ruleEl=document.querySelector('#rule');
+const modeButtons=[...document.querySelectorAll('.mode')];
+
+let winLength=3;
+let size=3;
+let board=[];
+let current='X';
+let playing=true;
+let winningCells=[];
+
+function configureMode(mode){
+  winLength=Number(mode);
+  size=winLength===3?3:10;
+  boardEl.className=`board mode-${winLength}`;
+  modeButtons.forEach(btn=>btn.classList.toggle('active',Number(btn.dataset.mode)===winLength));
+  ruleEl.textContent=winLength===3
+    ?'Bàn 3×3 · Xếp 3 quân liên tiếp để thắng'
+    :'Bàn 10×10 · Xếp 5 quân liên tiếp để thắng';
+  start();
+}
+
+function start(){
+  board=Array(size*size).fill('');
+  current='X';
+  playing=true;
+  winningCells=[];
+  statusEl.textContent='Lượt của X';
+  render();
+}
+
+function render(){
+  boardEl.innerHTML='';
+  board.forEach((value,index)=>{
+    const cell=document.createElement('button');
+    cell.className='cell'+(value==='O'?' o':'')+(winningCells.includes(index)?' win':'');
+    cell.textContent=value;
+    cell.disabled=!playing||Boolean(value);
+    cell.setAttribute('aria-label',value?`Ô ${index+1}: ${value}`:`Ô ${index+1}`);
+    cell.addEventListener('click',()=>move(index));
+    boardEl.appendChild(cell);
+  });
+}
+
+function move(index){
+  if(!playing||board[index])return;
+  board[index]=current;
+  winningCells=findWin(index,current);
+
+  if(winningCells.length){
+    playing=false;
+    statusEl.textContent=`🎉 ${current} thắng!`;
+  }else if(board.every(Boolean)){
+    playing=false;
+    statusEl.textContent='🤝 Hòa!';
+  }else{
+    current=current==='X'?'O':'X';
+    statusEl.textContent=`Lượt của ${current}`;
+  }
+  render();
+}
+
+function findWin(index,player){
+  const row=Math.floor(index/size);
+  const col=index%size;
+  const directions=[[0,1],[1,0],[1,1],[1,-1]];
+
+  for(const [dr,dc] of directions){
+    const line=[index];
+
+    for(const sign of [-1,1]){
+      let r=row+dr*sign;
+      let c=col+dc*sign;
+      while(r>=0&&r<size&&c>=0&&c<size&&board[r*size+c]===player){
+        if(sign<0)line.unshift(r*size+c);else line.push(r*size+c);
+        r+=dr*sign;
+        c+=dc*sign;
+      }
+    }
+
+    if(line.length>=winLength){
+      const pos=line.indexOf(index);
+      let start=Math.max(0,pos-winLength+1);
+      if(start+winLength>line.length)start=line.length-winLength;
+      return line.slice(start,start+winLength);
+    }
+  }
+  return [];
+}
+
+modeButtons.forEach(btn=>btn.addEventListener('click',()=>configureMode(btn.dataset.mode)));
+resetEl.addEventListener('click',start);
+configureMode(3);
 </script>
 </body>
 </html>
