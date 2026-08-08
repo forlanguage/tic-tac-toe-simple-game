@@ -2,9 +2,23 @@ window.CaroVoice = (() => {
   const VOICES = { X: 'Vietnamese Male', O: 'Vietnamese Female' };
   let enabled = false;
   let token = 0;
+  let initialized = false;
 
   function ready() {
     return typeof window.responsiveVoice !== 'undefined';
+  }
+
+  function ensureInit() {
+    if (!ready() || initialized) return ready();
+    try {
+      if (typeof window.responsiveVoice.init === 'function') {
+        window.responsiveVoice.init({});
+      }
+      initialized = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   function cancel() {
@@ -15,7 +29,7 @@ window.CaroVoice = (() => {
   }
 
   function speak(text, player = 'O', options = {}) {
-    if (!enabled || !ready()) return Promise.resolve(false);
+    if (!enabled || !ensureInit()) return Promise.resolve(false);
     const myToken = token;
     return new Promise(resolve => {
       try {
@@ -67,7 +81,8 @@ window.CaroVoice = (() => {
 
   function setEnabled(value) {
     enabled = Boolean(value);
-    if (!enabled) cancel();
+    if (enabled) ensureInit();
+    else cancel();
     return enabled;
   }
 
